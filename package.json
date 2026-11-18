@@ -33,7 +33,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test src/",
+    "test": "node --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
