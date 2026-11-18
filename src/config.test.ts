@@ -1,16 +1,35 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { classifierPrompt, normalizeOptions, parseTier, pickModel, strategyFor } from "./config.ts"
+import { candidateIds, classifierPrompt, normalizeOptions, parseTier, strategyFor } from "./config.ts"
 
 test("defaults are safe", () => {
   const options = normalizeOptions(undefined)
   assert.equal(options.enabled, true)
   assert.equal(options.autoModelId, "auto")
-  assert.deepEqual(options.routes, {})
   assert.equal(options.timeoutMs, 4000)
   assert.equal(options.classifierModel, undefined)
   assert.equal(options.strategy, "session")
-  assert.deepEqual(options.strategies, {})
+  assert.deepEqual(options.strategies, { opencode: "request" })
+  assert.deepEqual(options.routes, {
+    opencode: {
+      simple: "deepseek-v4.1-flash-free",
+      standard: "mimo-v2.6-flash-free",
+      complex: "longcat-2.5-free",
+    },
+  })
+  assert.equal(strategyFor(options, "opencode"), "request")
+  assert.ok(options.fallback.length > 0)
+})
+
+test("configuring any route replaces the built-in defaults", () => {
+  const options = normalizeOptions({ routes: { proxyapi: { simple: "x" } } })
+  assert.deepEqual(options.routes, { proxyapi: { simple: "x" } })
+  assert.equal(options.strategy, "session")
+})
+
+test("a custom fallback list replaces the default one", () => {
+  const options = normalizeOptions({ fallback: ["a", "", 5] })
+  assert.deepEqual(options.fallback, ["a"])
 })
 
 test("blank route values are dropped", () => {
@@ -51,12 +70,13 @@ test("incomplete classifier config is ignored", () => {
   assert.equal(normalizeOptions({ classifier: { model: { providerID: "opencode" } } }).classifierModel, undefined)
 })
 
-test("pickModel prefers the exact tier, then standard", () => {
-  const routes = { acme: { standard: "mid", complex: "big" } }
-  assert.equal(pickModel(routes, "acme", "standard"), "mid")
-  assert.equal(pickModel(routes, "acme", "simple"), "mid")
-  assert.equal(pickModel(routes, "acme", "complex"), "big")
-  assert.equal(pickModel(routes, "other", "complex"), undefined)
+test("candidateIds prefers the exact tier, then standard, and dedupes", () => {
+  const routes = { acme: { standard: "mid", complex: "big" }, flat: { simple: "one" } }
+  assert.deepEqual(candidateIds(routes, "acme", "standard"), ["mid", "big"])
+  assert.deepEqual(candidateIds(routes, "acme", "complex"), ["big", "mid"])
+  assert.deepEqual(candidateIds(routes, "acme", "simple"), ["mid", "big"])
+  assert.deepEqual(candidateIds(routes, "flat", "simple"), ["one"])
+  assert.deepEqual(candidateIds(routes, "other", "simple"), [])
 })
 
 test("parseTier accepts a word or a sentence with one", () => {

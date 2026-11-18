@@ -1,6 +1,6 @@
 import { Plugin } from "@opencode/plugin"
 import { classify, shouldEscalate, type Tier } from "./classify.ts"
-import { classifierPrompt, normalizeOptions, parseTier, pickModel, strategyFor } from "./config.ts"
+import { classifierPrompt, candidateIds, normalizeOptions, parseTier, strategyFor } from "./config.ts"
 
 const DEFAULT_TIER: Tier = "standard"
 
@@ -27,6 +27,17 @@ export default Plugin.define({
     const lastTier = new Map<string, Tier>()
     // Strategy of the provider this session runs on, learned at the first resolve.
     const strategyBySession = new Map<string, string>()
+
+    // The model ids each provider currently offers. A configured model can
+    // disappear from the catalog, so routing checks this before committing.
+    const available = new Map<string, Set<string>>()
+
+    await ctx.model.transform((editor: any) => {
+      for (const providerID of Object.keys(options.routes)) {
+        const models = editor.list(providerID) as any[]
+        if (models.length > 0) available.set(providerID, new Set(models.map((model) => String(model.id))))
+      }
+    })
 
     async function askClassifier(text: string): Promise<Tier | undefined> {
       const generate = ctx.experimental?.generate?.text ?? ctx.generate?.text
@@ -90,7 +101,12 @@ export default Plugin.define({
 
       const tier =
         (strategy === "request" ? lastTier.get(sessionID) : sessionTier.get(sessionID)) ?? DEFAULT_TIER
-      const id = pickModel(options.routes, providerID, tier)
+      const candidates = [
+        ...candidateIds(options.routes, providerID, tier),
+        ...options.fallback,
+      ]
+      const have = available.get(providerID)
+      const id = have && have.size > 0 ? candidates.find((candidate) => have.has(candidate)) : candidates[0]
       if (!id) {
         debug(`no route for ${providerID}, keeping ${providerID}/${options.autoModelId}`)
         return
