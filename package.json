@@ -1,0 +1,46 @@
+{
+  "name": "@southwood/opencode-auto",
+  "version": "0.1.0",
+  "description": "Auto model selection for OpenCode: one \u00abAuto\u00bb entry in the model picker that routes each request to a cheap, standard or strong model by task complexity.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sergey Vorobiev",
+  "homepage": "https://github.com/Southwoodd/opencode-auto",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Southwoodd/opencode-auto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Southwoodd/opencode-auto/issues"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "model-routing",
+    "auto",
+    "llm",
+    "cost-optimization"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
